@@ -1,0 +1,40 @@
+C:/Users/henry/Documents/Verilog/LC3/ALU.sv {1 {vlog -work work -sv -stats=none C:/Users/henry/Documents/Verilog/LC3/ALU.sv
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling package ALU_sv_unit
+-- Importing package LCp
+-- Compiling module ALU
+
+Top level modules:
+	ALU
+
+} {} {}} C:/Users/henry/Documents/Verilog/LC3/LC3_tb.sv {1 {vlog -work work -sv -stats=none C:/Users/henry/Documents/Verilog/LC3/LC3_tb.sv
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module LC3_tb
+
+Top level modules:
+	LC3_tb
+
+} {} {}} C:/Users/henry/Documents/Verilog/LC3/LCp.sv {1 {vlog -work work -sv -stats=none C:/Users/henry/Documents/Verilog/LC3/LCp.sv
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling package LCp
+
+Top level modules:
+	--none--
+
+} {} {}} C:/Users/henry/Documents/Verilog/LC3/NZP.sv {1 {vlog -work work -sv -stats=none C:/Users/henry/Documents/Verilog/LC3/NZP.sv
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module NZP
+
+Top level modules:
+	NZP
+
+} {} {}} C:/Users/henry/Documents/Verilog/LC3/reg_file.sv {1 {vlog -work work -sv -stats=none C:/Users/henry/Documents/Verilog/LC3/reg_file.sv
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling package reg_file_sv_unit
+-- Importing package LCp
+-- Compiling module reg_file
+
+Top level modules:
+	reg_file
+
+} {} {}}
