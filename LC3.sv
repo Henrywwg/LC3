@@ -43,18 +43,12 @@ module LC3(
 
 
     //State machine type
-    typedef enum logic [2:0]{FETCHTO_MEM, LOADTO_MDR, LOADTO_BUS, FETCHTO_IR, PROC_CMD} state_t;
+    typedef enum logic [2:0]{FETCHTO_MEM, LOADTO_MDR, LOADTO_BUS, FETCHTO_IR, JSR_PC PROC_CMD} state_t;
 
     state_t state, nxt_state;
 
     //Internal assignments
     assign op = cmd[15:12]; //Make opcodes easier to work with
-
-    always_ff @(posedge clk, negedge rst_n)
-        if(!rst_n)
-            IR <= '0;
-        else if(LD_IR)
-            IR <= BUS;
 
     ///////////////////
     // STATE MACHINE //
@@ -134,8 +128,8 @@ module LC3(
                             ADDR2muxsig = 2'b01;        //MUX SEXT 9bit
                             PCmuxsig = 2'b01;
                             LD_PC = 1;
+                            nxt_state = FETCHTO_MEM;
                         end
-                        
                     ADD: begin
                         SR1 = cmd[8:6];
                         DR = cmd[11:9];
@@ -150,10 +144,16 @@ module LC3(
                         LD_CC = 1;
                         LD_REG = 1;
                         LD_PC = 1;
+                        nxt_state = FETCHTO_MEM;
                     end
                     LD:;
                     ST:;
-                    JSR:;
+                    JSR_save: begin
+                        DR = 3'b111;    //Save return address (PC val)
+                        gatePC = 0;     //Output PC to bus
+                        LD_REG = 1;
+                        nxt_state = JSR_PC;
+                    end
                     AND: begin
                         SR1 = cmd[8:6];
                         DR = cmd[11:9];
@@ -166,6 +166,7 @@ module LC3(
                         LD_CC = 1;
                         LD_REG = 1;
                         LD_PC = 1;
+                        nxt_state = FETCHTO_MEM;
                     end
                     LDR:;
                     STR:;
@@ -178,17 +179,36 @@ module LC3(
                         LD_CC = 1;
                         LD_REG = 1;
                         LD_PC = 1;
+                        nxt_state = FETCHTO_MEM;
                     end
                     LDI:;
                     STI:;
-                    RET:;
+                    RET: begin
+                        SR1 = cmd[8:6];
+                        ALUop = 2'b11;  //NOP
+                        gateALU = 0;
+                        PCmuxsig = 2'b11;
+                        LD_PC = 1;
+                        nxt_state = FETCHTO_MEM;;
+                    end
                     RESERVED:;
                     LEA:;
                     TRAP:;
                 endcase
             end
 
-            default: nxt_state = IDLE;
+            JSR_PC: begin
+                if(cmd[11]) begin
+                    PCmuxsig = 2'b01;   //Get sum of two values for PC value
+                    ADDR2muxsig = 2'b00;//SEXT 11 bit
+                    ADDR1muxsig = 0;    //PC cur. val
+                    LD_PC = 1;
+                end 
+                nxt_state = FETCHTO_MEM;
+            end
+
+
+            default: nxt_state = FETCHTO_MEM;
 
         endcase
 
@@ -206,6 +226,15 @@ module LC3(
                 2'b01: PC <= ADDRsum;   //Address sum
                 default: PC <= BUS;     //Default to bus
             endcase
+
+    //////////////////////
+    // INSTRUCTION REG  //
+    //////////////////////
+     always_ff @(posedge clk, negedge rst_n)
+        if(!rst_n)
+            IR <= '0;
+        else if(LD_IR)
+            IR <= BUS;   
 
 
     
