@@ -16,6 +16,7 @@ module LC3(
     logic [15:0]BUS;              //The whole ass buss
     logic [15:0]ALUB;
     logic [2:0]NZP_val;
+    logic we;
 
     logic [15:0]MAR, MDR;   //Memory address and data registers
 
@@ -42,7 +43,7 @@ module LC3(
 
 
     //State machine type
-    typedef enum logic {IDLE, NOTIDLE} state_t;
+    typedef enum logic [2:0]{FETCHTO_MEM, LOADTO_MDR, LOADTO_BUS, FETCHTO_IR, PROC_CMD} state_t;
 
     state_t state, nxt_state;
 
@@ -88,6 +89,7 @@ module LC3(
         MARMUXsig = 0;
         ALUop = '0;
         mem_en = 0;
+        we = 0;
 
         //Active low//
         gateALU = 1;
@@ -95,11 +97,45 @@ module LC3(
         gateMDR = 1;
         gatePC = 1;
     
-
         case(state)
-            IDLE: begin
+            //Fetch an instruction from memory
+            FETCHTO_MEM: begin
+                gatePC = 0; //Put PC on BUS
+                LD_MAR = 1; //Load PC to mem address reg
+                we = 0;     //Reading from mem
+                mem_en = 1; //Enable RAM
+                nxt_state = LOADTO_MDR;
+            end
+
+            LOADTO_MDR: begin
+                mem_en = 1; //Still need mem enabled
+                we = 0;     //Still reading...
+                nxt_state = LOADTO_BUS;
+            end
+
+            LOADTO_BUS: begin
+                mem_en = 1; //Still need mem enabled
+                we = 0;     //Still reading...
+                LD_MDR = 1; //Load mem value into MDR
+                gateMDR = 0;//Put MDR onto bus
+                nxt_state = FETCHTO_IR;
+            end
+
+            FETCHTO_IR: begin
+                gateMDR = 0;//Keep MDR on Bus
+                LD_IR = 1;  //Store in IR
+                nxt_state = PROC_CMD;
+            end
+            
+            PROC_CMD: begin
                 case(op)
-                    BR:;
+                    BR: if(|(NZP_val & cmd[11:9])) begin  //Might be broken... be careful
+                            ADDR1muxsig = 0;            //MUX PC val
+                            ADDR2muxsig = 2'b01;        //MUX SEXT 9bit
+                            PCmuxsig = 2'b01;
+                            LD_PC = 1;
+                        end
+                        
                     ADD: begin
                         SR1 = cmd[8:6];
                         DR = cmd[11:9];
@@ -218,7 +254,7 @@ module LC3(
     reg_file iREG(.clk(clk), .rst_n(rst_n), .SR1(SR1), .SR2(SR2), .DR(DR), .LD_REG(LD_REG), .BUS_IN(BUS), .OUT1(FO1), .OUT2(FO2));
 
     // Instantiate placeholder RAM //
-    RAM iRAM(.clk(clk), .we(), .mem_en(mem_en), .addr(mem_addr), .rdata(mem_data), .data(ram_data));
+    RAM iRAM(.clk(clk), .we(we), .mem_en(mem_en), .addr(mem_addr), .rdata(mem_data), .data(ram_data));
 
     // Instantiate RAM register //
     RAM_reg iRREG(.clk(clk), .rst_n(rst_n), .bus(BUS), .mem_data(ram_data), .LD_MAR(LD_MAR), .LD_MDR(LD_MDR), .mem_en(mem_en), .addr(mem_addr), .data(mem_data));
