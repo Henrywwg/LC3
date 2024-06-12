@@ -18,10 +18,10 @@ module LC3_tb();
 
         clk = 0;
         rst_n = 0;
-        repeat(4) @(negedge clk);
+        repeat(2) @(negedge clk);
         rst_n = 1;
         @(negedge clk);
-        repeat (50) @(posedge clk);
+        repeat (2000) @(posedge clk);
         $stop();
     end
 

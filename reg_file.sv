@@ -29,20 +29,20 @@ module reg_file(
 
     always_ff @(posedge clk, negedge rst_n)
         if(!rst_n)
-            gen_reg[1] <= 16'h0001;
+            gen_reg[1] <= 16'h0000;
         else if(LD_REG && (DR == 3'b001))
             gen_reg[1] <=  BUS_IN;
 
     always_ff @(posedge clk, negedge rst_n)
         if(!rst_n)
-            gen_reg[2] <= 16'h000F;
+            gen_reg[2] <= 16'h0000;
         else if(LD_REG && (DR == 3'b010))
             gen_reg[2] <=  BUS_IN;
 
 
     always_ff @(posedge clk, negedge rst_n)
         if(!rst_n)
-            gen_reg[3] <= 16'h0002;
+            gen_reg[3] <= 16'h0000;
         else if(LD_REG && (DR == 3'b011))
             gen_reg[3] <=  BUS_IN;
 

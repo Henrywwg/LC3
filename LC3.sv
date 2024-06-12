@@ -25,14 +25,16 @@ module LC3(
     logic [15:0]BUS;              //The whole ass buss
     logic [15:0]ALUB;
     logic [2:0]NZP_val;
-    logic s_flag;
-    logic MDRchange, RAMchange, MARchange, REGchange;
+    //logic MDRchange, RAMchange, MARchange, REGchange;
     logic INC_INSTRUCTION_COUNTER, RESET_INSTRUCTION_COUNTER;
+
+    //FOR TESTING
+    logic COMMAND_FINISHED;
 
     assign cmd = IR;    //uhh this is sloppy
 
 
-    logic [15:0]MAR, MDR;   //Memory address and data registers
+    //logic [15:0]MAR, MDR;   //Memory address and data registers
 
     logic [15:0]flopped_ram_data;
     logic [15:0]flopped_MAR;
@@ -86,9 +88,6 @@ module LC3(
     always_comb begin
         //Default outputs
 
-        //Flag
-        s_flag = 0;
-
         //Active high//
         nxt_state = state;
         LD_REG = 0;
@@ -110,6 +109,7 @@ module LC3(
         we = 0;
         INC_INSTRUCTION_COUNTER = 0;
         RESET_INSTRUCTION_COUNTER = 1;
+        COMMAND_FINISHED = 0;
 
         //PSR gets itself unless modified
         PSR_new[15:3] = PSR[15:3];
@@ -123,6 +123,7 @@ module LC3(
         case(state)
             //Fetch an instruction from memory
             FETCHTO_MEM: begin
+                COMMAND_FINISHED = 1;//Flag used for debugging
                 gatePC = 0; //Put PC on BUS
                 LD_MAR = 1; //Load PC to mem address reg
                 we = 0;     //Reading from mem
@@ -133,6 +134,8 @@ module LC3(
             LOADTO_MDR: begin
                 mem_en = 1; //Still need mem enabled
                 we = 0;     //Still reading...
+                PCmuxsig = 2'b00;
+                LD_PC = 1;              //Increment PC here cause y not
                 nxt_state = LOADTO_BUS;
             end
 
@@ -152,13 +155,16 @@ module LC3(
             
             PROC_CMD: begin
                 case(op)
-                    BR: if(|(NZP_val & cmd[11:9])) begin  //Might be broken... be careful
-                            ADDR1muxsig = 0;            //MUX PC val
-                            ADDR2muxsig = 2'b01;        //MUX SEXT 9bit
-                            PCmuxsig = 2'b01;
-                            LD_PC = 1;
+                    BR: begin
+                            if(|(NZP_val & cmd[11:9])) begin  //Might be broken... be careful
+                                ADDR1muxsig = 0;            //MUX PC val
+                                ADDR2muxsig = 2'b01;        //MUX SEXT 9bit
+                                PCmuxsig = 2'b01;
+                                LD_PC = 1;
+                            end
                             nxt_state = FETCHTO_MEM;
                         end
+
 
                     ADD: begin
                         SR1 = cmd[8:6];
@@ -173,14 +179,16 @@ module LC3(
                         gateALU = 0;
                         LD_CC = 1;
                         LD_REG = 1;
-                        LD_PC = 1;
+                        // LD_PC = 1;
                         nxt_state = FETCHTO_MEM;
                     end
 
                     LD: begin
+                        INC_INSTRUCTION_COUNTER = 1;
+                        RESET_INSTRUCTION_COUNTER = 0;  //Begin subcounter
                         DR = cmd[11:9];
                         mem_en = 1;
-                        if(~(MARchange | MDRchange | RAMchange)) begin    //Step 1 - no modification to any registers yet 
+                        if(INSTRUCTION_COUNTER == 3'b000) begin    //Step 1 - no modification to any registers yet 
                             MARMUXsig = 0;          //Sum of addr
                             ADDR2muxsig = 2'b01;    //SEXT 9
                             ADDR1muxsig = 1'b0;     //PC
@@ -188,17 +196,17 @@ module LC3(
                             gateMARMUX = 0;         //Put calculated address to bus
                             LD_MAR = 1;             //Clock in address to MAR
                         end
-                        else if (MARchange)         //Step 2 give 1 cc for RAM to read data from location
+                        else if (INSTRUCTION_COUNTER == 3'b001)         //Step 2 give 1 cc for RAM to read data from location
                             we = 0;                 //Read from RAM
-                        else if (RAMchange) begin   //Step 3 clock RAM value into MDR
+                        else if (INSTRUCTION_COUNTER == 3'b010) begin   //Step 3 clock RAM value into MDR
                             we = 0;                 //Still just reading
                             LD_MDR = 1;             //write to MDR
                         end
-                        else if(MDRchange)begin     //Step 4 - Put MDR on bus and load DR with data it
+                        else if(INSTRUCTION_COUNTER == 3'b011)begin     //Step 4 - Put MDR on bus and load DR with data it
                             gateMDR = 0;            //Put MDR onto bus
                             LD_REG = 1;             //clock into DR
-                            PCmuxsig = 2'b00;
-                            LD_PC = 1;              //Inc program counter
+                            // PCmuxsig = 2'b00;
+                            // LD_PC = 1;              //Inc program counter
                             LD_CC = 1;              //Get NZP val
                             nxt_state = FETCHTO_MEM;//Get next instruction
                         end
@@ -206,23 +214,23 @@ module LC3(
                     
                     ST: begin
                         SR1 = cmd[11:9];
-                        if(~(MARchange | MDRchange | RAMchange)) begin//Step 1 - Load MAR with SEXT 9 + PC
+                        if(INSTRUCTION_COUNTER == 3'b000) begin//Step 1 - Load MAR with SEXT 9 + PC
                             MARMUXsig = 0;          //Sum of addr
                             ADDR2muxsig = 2'b01;    //SEXT 9
                             ADDR1muxsig = 1'b0;     //PC
                             gateMARMUX = 0;         //Put calculated address to bus
                             LD_MAR = 1;             //Clock in address to MAR
                         end
-                        else if (MARchange) begin   //Step 2 - Load MDR with SR
+                        else if (INSTRUCTION_COUNTER == 3'b001) begin   //Step 2 - Load MDR with SR
                             ALUop = 2'b11;          //NOP
                             gateALU = 0;            //Put SR1 to bus
                             LD_MDR = 1;             //Load bus to MDR
                         end
-                        else if (MDRchange) begin   //Step 3 - Store MDR to RAM
+                        else if (INSTRUCTION_COUNTER == 3'b010) begin   //Step 3 - Store MDR to RAM
                             mem_en = 1;             //Enable that suckah
                             we = 1;                 //Write on next cc
-                            PCmuxsig = 2'b00;
-                            LD_PC = 1;              //Inc program counter
+                            // PCmuxsig = 2'b00;
+                            // LD_PC = 1;              //Inc program counter
                             nxt_state = FETCHTO_MEM;//Get next instruction
                         end
                     end
@@ -245,32 +253,34 @@ module LC3(
                         gateALU = 0;
                         LD_CC = 1;
                         LD_REG = 1;
-                        LD_PC = 1;
+                        // LD_PC = 1;
                         nxt_state = FETCHTO_MEM;
                     end
                    
                     LDR: begin
+                        INC_INSTRUCTION_COUNTER = 1;
+                        RESET_INSTRUCTION_COUNTER = 0;  //Begin subcounter
                         DR = cmd[11:9];
                         SR1 = cmd[8:6]; //Base register
                         mem_en = 1;
-                        if(~(MARchange | MDRchange | RAMchange)) begin    //Step 1 - no modification to any registers yet 
+                        if((INSTRUCTION_COUNTER == 3'b000)) begin    //Step 1 - no modification to any registers yet 
                             MARMUXsig = 0; 
                             ADDR2muxsig = 2'b10;    //SEXT 6 bit
                             ADDR1muxsig = 1'b1;     //SR1 register
                             gateMARMUX = 0; //Put calculated address to bus
                             LD_MAR = 1;     //Clock in address to MAR
                         end
-                        else if (MARchange) //Step 2 give 1 cc for RAM to read data from location
+                        else if (INSTRUCTION_COUNTER == 3'b001) //Step 2 give 1 cc for RAM to read data from location
                             we = 0; //Read from RAM
-                        else if (RAMchange) begin  //Step 3 clock RAM value into MDR
+                        else if (INSTRUCTION_COUNTER == 3'b010) begin  //Step 3 clock RAM value into MDR
                             we = 0;         //Still just reading
                             LD_MDR = 1;     //write to MDR
                         end
-                        else if(MDRchange)begin  //Step 4 - Put MDR on bus and load DR with data it
+                        else if(INSTRUCTION_COUNTER == 3'b011)begin  //Step 4 - Put MDR on bus and load DR with data it
                             gateMDR = 0;    //Put MDR onto bus
                             LD_REG = 1;     //clock into DR
-                            PCmuxsig = 2'b00;
-                            LD_PC = 1;  //Inc program counter
+                            // PCmuxsig = 2'b00;
+                            // LD_PC = 1;  //Inc program counter
                             LD_CC = 1;              //Get NZP val
                             nxt_state = FETCHTO_MEM;//Get next instruction
                         end
@@ -278,24 +288,26 @@ module LC3(
                     end
                    
                     STR: begin
+                        INC_INSTRUCTION_COUNTER = 1;
+                        RESET_INSTRUCTION_COUNTER = 0;  //Begin subcounterd
                         SR1 = cmd[11:9];
-                        if(~(MARchange | MDRchange | RAMchange)) begin//Step 1 - Load MAR with SEXT 9 + PC
+                        if(INSTRUCTION_COUNTER == 3'b000) begin//Step 1 - Load MAR with SEXT 9 + PC
                             MARMUXsig = 0;          //Sum of addr
                             ADDR2muxsig = 2'b10;    //SEXT 6
                             ADDR1muxsig = 1'b1;     //PC
                             gateMARMUX = 0;         //Put calculated address to bus
                             LD_MAR = 1;             //Clock in address to MAR
                         end
-                        else if (MARchange) begin   //Step 2 - Load MDR with SR
+                        else if (INSTRUCTION_COUNTER == 3'b001) begin   //Step 2 - Load MDR with SR
                             ALUop = 2'b11;          //NOP
                             gateALU = 0;            //Put SR1 to bus
                             LD_MDR = 1;             //Load bus to MDR
                         end
-                        else if (MDRchange) begin   //Step 3 - Store MDR to RAM
+                        else if (INSTRUCTION_COUNTER == 3'b010) begin   //Step 3 - Store MDR to RAM
                             mem_en = 1;             //Enable that suckah
                             we = 1;                 //Write on next cc
-                            PCmuxsig = 2'b00;
-                            LD_PC = 1;              //Inc program counter
+                            // PCmuxsig = 2'b00;
+                            // LD_PC = 1;              //Inc program counter
                             nxt_state = FETCHTO_MEM;//Get next instruction
                         end
                     end
@@ -309,7 +321,7 @@ module LC3(
                         gateALU = 0;
                         LD_CC = 1;
                         LD_REG = 1;
-                        LD_PC = 1;  //increment PC
+                        // LD_PC = 1;  //increment PC
                         nxt_state = FETCHTO_MEM;
                     end
                  
@@ -360,8 +372,8 @@ module LC3(
                                         mem_en = 1;
                                         gateMDR = 0;            //Put MDR onto bus
                                         LD_REG = 1;             //write to DR
-                                        PCmuxsig = 2'b00;
-                                        LD_PC = 1;              //Inc program counter
+                                        // PCmuxsig = 2'b00;
+                                        // LD_PC = 1;              //Inc program counter
                                         LD_CC = 1;              //Get NZP val
                                         nxt_state = FETCHTO_MEM;//Get next instruction
                                     end
@@ -410,8 +422,8 @@ module LC3(
                             3'b101: begin                       //MDR <- MEM[MAR]   
                                         mem_en = 1;             //Enable writing MDR to MEM
                                         we = 1;                 //Write to RAM
-                                        PCmuxsig = 2'b00;
-                                        LD_PC = 1;              //Inc program counter
+                                        // PCmuxsig = 2'b00;
+                                        // LD_PC = 1;              //Inc program counter
                                         nxt_state = FETCHTO_MEM;//Get next instruction
                                     end
                             default: nxt_state = HALT;   //Should never get here... but if we do halt in default
@@ -441,34 +453,36 @@ module LC3(
                         MARMUXsig = 0;          //Put effective address to bus
                         gateMARMUX = 0;         //enable
                         LD_REG = 1;
-                        PCmuxsig = 2'b11;
-                        LD_PC = 1;              //Increment PC
+                        // PCmuxsig = 2'b00;
+                        // LD_PC = 1;              //Increment PC
                         LD_CC = 1;              //Get NZP val
                         nxt_state = FETCHTO_MEM;//Get next instruction
                     end
                   
                     TRAP: begin
+                        INC_INSTRUCTION_COUNTER = 1;
+                        RESET_INSTRUCTION_COUNTER = 0;  //Begin subcounter
                         mem_en = 1;
-                        if(~REGchange) begin        //R7 <- PC
+                        if(INSTRUCTION_COUNTER == 3'b000) begin        //R7 <- PC
                             DR = 3'b111;    
                             gatePC = 0;
                             LD_REG = 1;
                         end
-                        else if(~(MARchange | MDRchange | RAMchange)) begin    //MAR = ZEXT 8 
+                        else if(INSTRUCTION_COUNTER == 3'b001) begin    //MAR = ZEXT 8 
                             MARMUXsig = 1;          //Sum of addr
                             //ADDR = ZEXT 8
                             gateMARMUX = 0;         //Put calculated address to bus
                             LD_MAR = 1;             //Clock in address to MAR
                         end
-                        else if (MARchange) begin   //Step 2 give 1 cc for RAM to read data from location
+                        else if (INSTRUCTION_COUNTER == 3'b010) begin   //Step 2 give 1 cc for RAM to read data from location
                             we = 0;                 //Read from RAM
                             LD_MDR = 1;
                         end
-                        else if (RAMchange) begin   //Step 3 clock RAM value into MDR
+                        else if (INSTRUCTION_COUNTER == 3'b011) begin   //Step 3 clock RAM value into MDR
                             we = 0;                 //Still just reading
                             LD_MDR = 1;             //write to MDR
                         end
-                        else if(MDRchange)begin     //Step 4 - Put MDR on bus and load DR with data it
+                        else if (INSTRUCTION_COUNTER == 3'b100) begin     //Step 4 - Put MDR on bus and load DR with data it
                             gateMDR = 0;            //Put MDR onto bus
                             PCmuxsig = 2'b1?;       //Load PC val from bus
                             LD_PC = 1;              //clock into PC
@@ -538,38 +552,36 @@ module LC3(
         else
             PSR <= {PSR_new, NZP_val};   
 
-    //////////////////////
-    // Flopped RAM data //
-    //////////////////////
-    always_ff @(posedge clk, negedge rst_n)
-        if(!rst_n)
-            flopped_ram_data <= '0;
-        else
-            flopped_ram_data <= ram_data;  
-    assign RAMchange = flopped_ram_data != ram_data; 
+    // //////////////////////
+    // // Flopped RAM data //
+    // //////////////////////
+    // always_ff @(posedge clk, negedge rst_n)
+    //     if(!rst_n)
+    //         flopped_ram_data <= '0;
+    //     else
+    //         flopped_ram_data <= ram_data;  
+    // assign RAMchange = flopped_ram_data != ram_data; 
 
-    //////////////////////
-    // Flopped MAR val. //
-    //////////////////////
-    always_ff @(posedge clk, negedge rst_n)
-        if(!rst_n)
-            flopped_MAR <= '0;
-        else
-            flopped_MAR <= mem_addr;  
-    assign MARchange = flopped_MAR != mem_addr; 
+    // //////////////////////
+    // // Flopped MAR val. //
+    // //////////////////////
+    // always_ff @(posedge clk, negedge rst_n)
+    //     if(!rst_n)
+    //         flopped_MAR <= '0;
+    //     else
+    //         flopped_MAR <= mem_addr;  
+    // assign MARchange = flopped_MAR != mem_addr; 
 
-    //////////////////////
-    // Flopped REG val. //
-    //////////////////////
-    always_ff @(posedge clk, negedge rst_n)
-        if(!rst_n)
-            flopped_LD_REG <= '0;
-        else
-            flopped_LD_REG <= LD_REG; 
-    assign REGchange = flopped_LD_REG != LD_REG;
+    // //////////////////////
+    // // Flopped REG val. //
+    // //////////////////////
+    // always_ff @(posedge clk, negedge rst_n)
+    //     if(!rst_n)
+    //         flopped_LD_REG <= '0;
+    //     else
+    //         flopped_LD_REG <= LD_REG; 
+    // assign REGchange = flopped_LD_REG != LD_REG;
 
-
-    
 
     //MUX GALORE
     assign ALUB = SR2mux ? {{11{IR[4]}}, IR[4:0]} : FO2;   //ALU b input gets sign extended IR val or output of SR2 from file reg
@@ -599,8 +611,6 @@ module LC3(
             BUS = 'Z;//Hi impedance
     end
 
-
-
     /////////////////////////
     // INSTANTIATE MODULES //
     /////////////////////////
@@ -616,6 +626,5 @@ module LC3(
 
     // Instantiate RAM register //
     RAM_reg iRREG(.clk(clk), .rst_n(rst_n), .bus(BUS), .mem_data(ram_data), .LD_MAR(LD_MAR), .LD_MDR(LD_MDR), .mem_en(mem_en), .addr(mem_addr), .data(mem_data), .MDRchange(MDRchange));
-
 
 endmodule
