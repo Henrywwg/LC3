@@ -366,7 +366,7 @@ module LC3(
                     STI: begin
                         INC_INSTRUCTION_COUNTER = 1;
                         RESET_INSTRUCTION_COUNTER = 0;  //Enable the mega counting to begin :3
-                        DR = cmd[11:9];                                
+                        SR = cmd[11:9];                                
                         case(INSTRUCTION_COUNTER)
                             3'b000: begin                       //MAR <- PC + SEXT 9            MDR <- MEM[PC + SEXT 9]]
                                         mem_en = 1;
@@ -391,31 +391,24 @@ module LC3(
                             3'b011: begin
                                         mem_en = 1;
                                         gateMDR = 0;            //Put MDR onto bus
-                                        LD_MAR = 1;             //clock into MAR again
+                                        LD_MAR = 1;             //clock into MAR again  - MAR now holds final address we'll write to
                                     end
-
+                                    //This is where STI differs from LDI
                             3'b100: begin
-                                        mem_en = 1;
-                                        we = 0;  
-                                        LD_MDR = 1;             //Read from RAM
+                                        ALUop = 2'b11;  //OUT = A /NOP kinda
+                                        gateALU = 0;    //Output ALU/ SR1 to bus
+                                        LD_MDR = 1;     //Load SR1 to MDR - staging for writing to RAM
                                     end
 
-                            3'b101: begin
-                                        mem_en = 1;
-                                        we = 0;  
-                                        LD_MDR = 1;             //Read from RAM
-                                    end
-
-                            3'b110: begin                       //MDR <- MEM[MAR]   
-                                        mem_en = 1;
-                                        gateMDR = 0;            //Put MDR onto bus
-                                        LD_REG = 1;             //write to DR
+                            3'b101: begin                       //MDR <- MEM[MAR]   
+                                        mem_en = 1;             //Enable writing MDR to MEM
+                                        we = 1;                 //Write to RAM
                                         PCmuxsig = 2'b00;
                                         LD_PC = 1;              //Inc program counter
-                                        LD_CC = 1;              //Get NZP val
                                         nxt_state = FETCHTO_MEM;//Get next instruction
                                     end
                             default: nxt_state = default;   //Should never get here... but if we do halt in default
+                        endcase
                     end
                
                     RET: begin
