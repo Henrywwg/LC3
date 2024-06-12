@@ -14,6 +14,7 @@ module ALU(
         case(operation)
             2'b01: out = A & B;
             2'b10: out = ~A;
+            2'b11: out = A; //forgot the NOP
             default: out = A + B;
         endcase
     end
