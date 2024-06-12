@@ -2,3 +2,5 @@
 *.wlf
 transcript
 *.mti
+/work/*
+/work/

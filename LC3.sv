@@ -3,38 +3,36 @@ import LCp::*;
 module LC3(
     input clk,
     input rst_n,
-    input [15:0]cmd,
+    //input [15:0]cmd,
 
     //Ram IO
-    input ram_data,
-    output [15:0]rdata,
-    output we,
-    output mem_en,
-    output [15:0]mem_addr
+    input [15:0]ram_data,
+    output logic [15:0]mem_data,
+    output logic we,
+    output logic mem_en,
+    output logic [15:0]mem_addr
 );
 
+    logic [15:0]cmd;
     //Internal signals
     logic [15:0]PC;   //Program counter
     logic [15:0]IR;
     logic [3:0]op;   //opcode based on current instruction
     logic [1:0]ALUop;
-    logic LD_IR, LD_CC, LD_PC, LD_REG, LD_MAR;
+    logic LD_IR, LD_CC, LD_PC, LD_REG, LD_MAR, LD_MDR;
     logic [2:0]SR1, SR2, DR;    //Source and dest registers
     logic [15:0]FO1, FO2;       //Outputs of register file
     logic [15:0]BUS;              //The whole ass buss
     logic [15:0]ALUB;
     logic [2:0]NZP_val;
-    logic we;
     logic s_flag;
     logic MDRchange, RAMchange, MARchange, REGchange;
+    logic INC_INSTRUCTION_COUNTER, RESET_INSTRUCTION_COUNTER;
+
+    assign cmd = IR;    //uhh this is sloppy
+
 
     logic [15:0]MAR, MDR;   //Memory address and data registers
-
-    logic [15:0]ram_data;
-
-    logic mem_en;
-    logic [15:0]mem_addr;
-    logic [15:0]mem_data;
 
     logic [15:0]flopped_ram_data;
     logic [15:0]flopped_MAR;
@@ -65,7 +63,7 @@ module LC3(
 
 
     //State machine type
-    typedef enum logic [2:0]{FETCHTO_MEM, LOADTO_MDR, LOADTO_BUS, FETCHTO_IR, JSR_PC PROC_CMD} state_t;
+    typedef enum logic [2:0]{FETCHTO_MEM, LOADTO_MDR, LOADTO_BUS, JSR_SAVE, FETCHTO_IR, JSR_PC, PROC_CMD, HALT} state_t;
 
     state_t state, nxt_state;
 
@@ -80,7 +78,7 @@ module LC3(
     //Reset to IDLE, otherwise advance to nxt_state
     always_ff @(posedge clk, negedge rst_n)
         if(!rst_n)
-            state <= IDLE;
+            state <= FETCHTO_MEM;
         else
             state <= nxt_state;
 
@@ -97,6 +95,7 @@ module LC3(
         LD_IR = 0;
         LD_CC = 0;
         LD_MAR = 0;
+        LD_MDR = 0;
         LD_PC = 0;
         SR1 = '0;
         SR2 = '0;
@@ -113,7 +112,7 @@ module LC3(
         RESET_INSTRUCTION_COUNTER = 1;
 
         //PSR gets itself unless modified
-        PSR_new = PSR[15:3];
+        PSR_new[15:3] = PSR[15:3];
 
         //Active low//
         gateALU = 1;
@@ -228,7 +227,7 @@ module LC3(
                         end
                     end
 
-                    JSR_save: begin
+                    JSR_SAVE: begin
                         DR = 3'b111;    //Save return address (PC val)
                         gatePC = 0;     //Output PC to bus
                         LD_REG = 1;
@@ -250,7 +249,7 @@ module LC3(
                         nxt_state = FETCHTO_MEM;
                     end
                    
-                    LDR:begin
+                    LDR: begin
                         DR = cmd[11:9];
                         SR1 = cmd[8:6]; //Base register
                         mem_en = 1;
@@ -366,7 +365,7 @@ module LC3(
                                         LD_CC = 1;              //Get NZP val
                                         nxt_state = FETCHTO_MEM;//Get next instruction
                                     end
-                            default: nxt_state = default;   //Should never get here... but if we do halt in default
+                            default: nxt_state = HALT;   //Should never get here... but if we do halt in default
 
                         endcase
                     end
@@ -374,7 +373,7 @@ module LC3(
                     STI: begin
                         INC_INSTRUCTION_COUNTER = 1;
                         RESET_INSTRUCTION_COUNTER = 0;  //Enable the mega counting to begin :3
-                        SR = cmd[11:9];                                
+                        SR1 = cmd[11:9];                                
                         case(INSTRUCTION_COUNTER)
                             3'b000: begin                       //MAR <- PC + SEXT 9            MDR <- MEM[PC + SEXT 9]]
                                         mem_en = 1;
@@ -415,7 +414,7 @@ module LC3(
                                         LD_PC = 1;              //Inc program counter
                                         nxt_state = FETCHTO_MEM;//Get next instruction
                                     end
-                            default: nxt_state = default;   //Should never get here... but if we do halt in default
+                            default: nxt_state = HALT;   //Should never get here... but if we do halt in default
                         endcase
                     end
                
@@ -429,12 +428,13 @@ module LC3(
                     end
                   
                     RESERVED:begin  //Throw Illegal Op instruction      can't really be fucked to do this...
-                        PSR_new[15] = 0; //Pass control to Kernel
+                        //PSR_new[15] = 0; //Pass control to Kernel
                         //R6 <- PC
                         //MEM[PC] = PC
+                        nxt_state = HALT;
                     end
                   
-                    LEA:begin //Went from hating this instruction to realizing it's neat AF
+                    LEA: begin //Went from hating this instruction to realizing it's neat AF
                         DR = cmd[11:9];
                         ADDR1muxsig = 0;        //PC
                         ADDR2muxsig = 2'b01;    //SEXT 9
@@ -500,7 +500,8 @@ module LC3(
     //////////////////////
     always_ff @(posedge clk, negedge rst_n)
         if(!rst_n)
-            PC <= { {15{1'b0}},1'b1};
+            //PC <= 16'h3000;
+            PC <= 16'h0000; //Uncomment the line above for actual use and not sim
         else if (LD_PC)
             case(PCmuxsig)
                 2'b00: PC <= PC + 1;    //PC incrementor
@@ -533,7 +534,7 @@ module LC3(
     ///////////////
     always_ff @(posedge clk, negedge rst_n)
         if(!rst_n)
-            PSR <= '0;
+            PSR <= 16'h8002;
         else
             PSR <= {PSR_new, NZP_val};   
 
@@ -588,11 +589,11 @@ module LC3(
     always_comb begin
         if(~gateALU)
             BUS = ALUout;
-        else if (gateMARMUX)
+        else if (~gateMARMUX)
             BUS = MARMUX;
-        else if (gateMDR)
+        else if (~gateMDR)
             BUS = mem_data;
-        else if (gatePC)
+        else if (~gatePC)
             BUS = PC;
         else 
             BUS = 'Z;//Hi impedance

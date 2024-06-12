@@ -4,10 +4,10 @@ module RAM(
     input mem_en,
     input [15:0]addr,
     input [15:0]rdata,
-    output [15:0]data
+    output logic [15:0]data
 );
 
-logic [15:0]mem[0:65535];
+logic [15:0]mem[0:511];           //set to 65535 for full size testing - 511 for ez testing
 
     always_ff @(posedge clk) begin
         if (we && mem_en)

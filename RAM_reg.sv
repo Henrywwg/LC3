@@ -7,7 +7,7 @@ module RAM_reg(
     input LD_MDR,
     input mem_en,
     
-    output MDRchange;
+    output MDRchange,
 
     output logic [15:0]addr,
 

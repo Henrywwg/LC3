@@ -11,7 +11,7 @@ module NZP(
     //Sequential logic to store NZP value
     always_ff @(posedge clk, negedge rst_n)
         if(!rst_n)
-            NZP_val <= '0;
+            NZP_val <= 3'b010;      //Reset to Z
         else if(NZP_en)
             NZP_val <= NZP_comb;
 
