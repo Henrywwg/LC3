@@ -17,6 +17,8 @@ module LC3(
     logic [15:0]ALUB;
     logic [2:0]NZP_val;
     logic we;
+    logic s_flag;
+    logic MDRchange, RAMchange;
 
     logic [15:0]MAR, MDR;   //Memory address and data registers
 
@@ -25,6 +27,8 @@ module LC3(
     logic mem_en;
     logic [15:0]mem_addr;
     logic [15:0]mem_data;
+
+    logic [15:0]flopped_ram_data;
     
 
     //Bus gates
@@ -65,6 +69,9 @@ module LC3(
     //Combination logic for SM
     always_comb begin
         //Default outputs
+
+        //Flag
+        s_flag = 0;
 
         //Active high//
         nxt_state = state;
@@ -146,7 +153,17 @@ module LC3(
                         LD_PC = 1;
                         nxt_state = FETCHTO_MEM;
                     end
-                    LD:;
+                    LD: begin
+                        DR = cmd[11:9];
+                        MARMUXsig = 0; 
+                        ADDR2muxsig = 2'b01;
+                        ADDR1muxsig = 1'b0;
+                        gateMARMUX = 0; //Put calculated address to bus
+                        LD_MAR = 1;     //Clock in address to MAR
+                        PCmuxsig = 2'b00;
+                        LD_PC = 1;  //Load PC now since we won't do it later and it won't effect any control flow
+                        nxt_state = LOADTO_MDR; //Jump to the loading IR
+                    end
                     ST:;
                     JSR_save: begin
                         DR = 3'b111;    //Save return address (PC val)
@@ -189,7 +206,7 @@ module LC3(
                         gateALU = 0;
                         PCmuxsig = 2'b11;
                         LD_PC = 1;
-                        nxt_state = FETCHTO_MEM;;
+                        nxt_state = FETCHTO_MEM;
                     end
                     RESERVED:;
                     LEA:;
@@ -207,6 +224,20 @@ module LC3(
                 nxt_state = FETCHTO_MEM;
             end
 
+            // LD_FETCH: begin
+            //     mem_en = 1;
+            //     if(MDRchange)begin
+            //         gateMDR = 0;    //Put MDR onto bus
+            //         LD_IR = 1;
+            //     end
+            //     else if (RAMchange) begin  //If value not loaded to MDR
+            //         we = 1;         //permit writing
+            //         LD_MDR = 1;     //write to MDR
+            //     end
+            //     else begin
+            //         we = 0; //Read from RAM
+            //     end
+            // end
 
             default: nxt_state = FETCHTO_MEM;
 
@@ -235,6 +266,17 @@ module LC3(
             IR <= '0;
         else if(LD_IR)
             IR <= BUS;   
+
+    //////////////////////
+    // Flopped RAM data //
+    //////////////////////
+     always_ff @(posedge clk, negedge rst_n)
+        if(!rst_n)
+            flopped_ram_data <= '0;
+        else
+            flopped_ram_data <= ram_data;  
+
+    assign RAMchange = flopped_ram_data != ram_data; 
 
 
     
@@ -286,7 +328,7 @@ module LC3(
     RAM iRAM(.clk(clk), .we(we), .mem_en(mem_en), .addr(mem_addr), .rdata(mem_data), .data(ram_data));
 
     // Instantiate RAM register //
-    RAM_reg iRREG(.clk(clk), .rst_n(rst_n), .bus(BUS), .mem_data(ram_data), .LD_MAR(LD_MAR), .LD_MDR(LD_MDR), .mem_en(mem_en), .addr(mem_addr), .data(mem_data));
+    RAM_reg iRREG(.clk(clk), .rst_n(rst_n), .bus(BUS), .mem_data(ram_data), .LD_MAR(LD_MAR), .LD_MDR(LD_MDR), .mem_en(mem_en), .addr(mem_addr), .data(mem_data), .MDRchange(MDRchange));
 
 
 endmodule
