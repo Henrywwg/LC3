@@ -3,8 +3,16 @@ import LCp::*;
 module LC3(
     input clk,
     input rst_n,
-    input [15:0]cmd
+    input [15:0]cmd,
+
+    //Ram IO
+    input ram_data,
+    output [15:0]rdata,
+    output we,
+    output mem_en,
+    output [15:0]mem_addr
 );
+
     //Internal signals
     logic [15:0]PC;   //Program counter
     logic [15:0]IR;
@@ -604,9 +612,6 @@ module LC3(
 
     // Instantiate registers // done
     reg_file iREG(.clk(clk), .rst_n(rst_n), .SR1(SR1), .SR2(SR2), .DR(DR), .LD_REG(LD_REG), .BUS_IN(BUS), .OUT1(FO1), .OUT2(FO2));
-
-    // Instantiate placeholder RAM //
-    RAM iRAM(.clk(clk), .we(we), .mem_en(mem_en), .addr(mem_addr), .rdata(mem_data), .data(ram_data));
 
     // Instantiate RAM register //
     RAM_reg iRREG(.clk(clk), .rst_n(rst_n), .bus(BUS), .mem_data(ram_data), .LD_MAR(LD_MAR), .LD_MDR(LD_MDR), .mem_en(mem_en), .addr(mem_addr), .data(mem_data), .MDRchange(MDRchange));
