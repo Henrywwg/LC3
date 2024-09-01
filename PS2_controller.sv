@@ -44,7 +44,7 @@ module PS2_host(
     //Shift register (as cmd)
     always_ff @(posedge clk) begin
         if(neg_edge_detect & inc) 
-            cmd <= cmd[7:0] + PS2_data_MS[1];
+            cmd <= {cmd[7:0], PS2_data_MS[1]};
         else
         cmd <= cmd; //Redundant, but shows what's happening... cope
     end
