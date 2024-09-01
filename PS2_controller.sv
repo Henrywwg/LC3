@@ -17,7 +17,7 @@ module PS2_host(
     logic PS2_data_MS[0:1];
     logic neg_edge_detect;
 
-    logic inc, clr_cntr, done;
+    logic inc, clr_cntr, done, enable_in;
 
     //Metastability for PS2 data
     always_ff @(posedge clk) begin
@@ -41,7 +41,7 @@ module PS2_host(
 
     //Shift register (as cmd)
     always_ff @(posedge clk) begin
-        if(neg_edge_detect & inc) 
+        if(neg_edge_detect & enable_in) 
             cmd <= {cmd[7:0], PS2_data_MS[1]};
         else
         cmd <= cmd; //Redundant, but shows what's happening... cope
@@ -67,25 +67,33 @@ module PS2_host(
         //Default outputs
         clr_cntr = 0;
         inc = 0; 
+        enable_in = 0;
+        done = 0;
 
         case(state)
             IDLE: begin
-                if(~PS2_data_MS[1]) begin
+                if(~PS2_data_MS[1] & neg_edge_detect) begin
                     nxt_state = COLLECT;
                     clr_cntr = 1;
                 end
             end
 
             COLLECT: begin
-                if(cntr == 4'b1000)
+                if(cntr == 4'b1000) //cnt to 10 clks
                     nxt_state = CMD_RECEIVED;
                 inc = 1;
+                enable_in = 1;
             end
 
             CMD_RECEIVED: begin
-                done = 1;
-                clr_cntr = 1;
-                nxt_state = IDLE;
+                if(cntr == 4'b1001) begin //count off one more clock then switch to IDLE
+                    done = 1;
+                    clr_cntr = 1;
+                    nxt_state = IDLE;
+                end
+                else
+                    inc = 1;
+                    enable_in = 1;
             end
 
             default: nxt_state = IDLE;  //Recover back to IDLE
@@ -94,9 +102,10 @@ module PS2_host(
 
     end
 
+    //Output behaviour for done
     always_ff @(posedge clk)
-        cmd_rdy <= done;    //keep cmd_rdy high for one clk
+            cmd_rdy <= done;    //keep cmd_rdy high for one clk
 
-    assign error = ^cmd;
+    assign error = ~^cmd;
 
 endmodule
