@@ -2,7 +2,8 @@ module PS2_host_tb();
 
     logic clk, rst_n;           //System   -> Host      stim
     logic ps2_clk, ps2_data;    //Keyboard -> Host      stim
-    logic cmd_rdy, cmd, error;  //Host     -> System    monitor
+    logic cmd_rdy, error;       //Host     -> System    monitor
+    logic [8:0]cmd;             //Host     -> System    monitor
     
     logic ps2_clk_enable, kbd_clk;
     logic [8:0]data;
@@ -11,11 +12,9 @@ module PS2_host_tb();
     //////////////////////////////
     //Instantiate DUT and hookup//
     //////////////////////////////
-    PS2_host iDUT(.clk(clk), .rst_n(.rst_n), .ps2_clk(ps2_clk), .ps2_data(ps2_data), .cmd_rdy(cmd_rdy), .cmd(cmd), .error(error));
+    PS2_host iDUT(.clk(clk), .rst_n(rst_n), .ps2_clk(ps2_clk), .ps2_data(ps2_data), .cmd_rdy(cmd_rdy), .cmd(cmd), .error(error));
 
-    kbd_placeholder iDUTsupport(.kbd_clk(kbd_clk), .rst_n(.rst_n), .LD(ld), .data(data), .ps2_data(ps2_data));
-
-    assign ps2_data = ;
+    kbd_placeholder iDUTsupport(.kbd_clk(kbd_clk), .rst_n(rst_n), .LD(ld), .data(data), .ps2_data(ps2_data));
 
     initial begin
         //Init stims
@@ -27,21 +26,23 @@ module PS2_host_tb();
 
         @(negedge clk);
         rst_n = 1;  //Deassert reset
-        data = 9'h0AB;
+        data = 9'h0A8;
 
-        @(negedge clk);
+        repeat(2) @(negedge clk);
         ld = 1;             //Load 010101011 into reg (should not error)
-
         //The testing begins
         //After reset host should be idling - waiting for input.
 
         //Enable kbd_clk which should then begin tx ps2 data
         ps2_clk_enable = 1;
 
-        repeat(9) @(negedge kbd_clk);   //Wait until a few kbd clocks are over then disable clk and check
+       repeat(2) @(negedge clk);
+        ld = 0;
+
+        repeat(20) @(negedge kbd_clk);   //Wait until a few kbd clocks are over then disable clk and check
         ps2_clk_enable = 0;
 
-
+        repeat(200) @(negedge clk);
 
         $stop();
     end

@@ -3,8 +3,8 @@ module PS2_host(
     input rst_n,
     input ps2_data,
     input ps2_clk,
-    output cmd_rdy,
-    output [8:0]cmd,
+    output logic cmd_rdy,
+    output logic [8:0]cmd,
     output error
 );
 
@@ -19,19 +19,17 @@ module PS2_host(
 
     logic inc, clr_cntr, done;
 
-    logic [3:0]cntr;
-
     //Metastability for PS2 data
     always_ff @(posedge clk) begin
         PS2_data_MS[0] <= ps2_data;
-        PS2_data_MS[1] <= PS2_data_MS[0]    //Stabilized data bit from the devce
+        PS2_data_MS[1] <= PS2_data_MS[0];    //Stabilized data bit from the devce
     end
 
     //Metastability for PS2_clk
     always_ff @(posedge clk) begin
         PS2_clk_MS[0] <= ps2_clk;
-        PS2_clk_MS[1] <= PS2_clk_MS[0]
-        PS2_clk_MS[2] <= PS2_clk_MS[1]  //Third ff for edge detection
+        PS2_clk_MS[1] <= PS2_clk_MS[0];
+        PS2_clk_MS[2] <= PS2_clk_MS[1];  //Third ff for edge detection
     end
 
     /////////////////////////////////////////
@@ -52,16 +50,16 @@ module PS2_host(
     //4 Bit counter to keep track of how many bits read into shift reg
     always_ff @(posedge clk)
         if(clr_cntr)
-            cntr <= `0; //Clear counter
+            cntr <= '0; //Clear counter
         else if(neg_edge_detect & inc)
             cntr <= cntr + 1;
 
     //SM logic
     always_ff @(posedge clk)
-        if(rst_n)
-            state <= idle;
+        if(!rst_n)
+            state <= IDLE;
         else
-            state <= nxt_state
+            state <= nxt_state;
     
     always_comb begin
         //Define default next state
@@ -69,12 +67,11 @@ module PS2_host(
         //Default outputs
         clr_cntr = 0;
         inc = 0; 
-        cmd_rdy = 0;
 
         case(state)
             IDLE: begin
                 if(~PS2_data_MS[1]) begin
-                    nxt_state = collect;
+                    nxt_state = COLLECT;
                     clr_cntr = 1;
                 end
             end
