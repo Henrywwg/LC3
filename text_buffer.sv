@@ -14,7 +14,7 @@ module text_buffer(
     input we,
     input [9:0]dot_counter, //9:3
     input [8:0]scanline_counter,//8:4
-    output [3:0]char           //Char for generator
+    output logic [3:0]char           //Char for generator
 );
 
     logic current_char;
@@ -28,13 +28,11 @@ module text_buffer(
     // Always update char 
     // write new char to memory only when needed by
     always_ff @(posedge clk) begin
-        if(!rst_n)
-            text_buffer[3:0][0:2399] <= '{default:4'b0000};     //fill all cells to 0
-        else if(we)
-            text_buffer[3:0][waddr] <= new_char;                //when enabled write new char to waddr location of buffer
+        if(we)
+            text_buffer[waddr] <= new_char;                //when enabled write new char to waddr location of buffer
         
         //Always output char
-        char <= text_buffer[3:0][current_char];
+        char <= text_buffer[current_char];
    end
 
 endmodule

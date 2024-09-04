@@ -10,7 +10,11 @@ module text_counters(
     assign x_dot = dot_counter[2:0];        //Lower 3 bits - 8 dots giving 8*16 pixels per char
 
     assign x_char = dot_counter[9:4];       //Upper 5 bits - 32 chars
-    assign y_char = scanline_counter[8:3]   //Upper
+    assign y_char = scanline_counter[8:3];   //Upper
+
+    logic end_of_line;
+    logic end_of_screen;
+
 
     //Dot counter - counts x positions to determine which pixel we are writing now
     always_ff @(posedge clk) begin

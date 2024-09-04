@@ -29,7 +29,6 @@ module VGA_logic(
 	//Counters for vertical and horizontal timings
 	logic [H_CNTR_BIT_SIZE - 1:0]h_cntr;
 	logic [V_CNTR_BIT_SIZE - 1:0]v_cntr;
-	logic active;
 	
 	//////////////////////////
 	//  Horizontal Counter  //
@@ -66,9 +65,9 @@ module VGA_logic(
 	
 	//Only green and blue? In 24 bit color? How queer...
 	//Guess we doin amber now
-	assign [7:0]green = active & img_reg[15:8];
-	assign [7:0]blue = active & img_reg[7:0];
-	assign red = active & 0;	//
+	assign green[7:0] = active & img_reg[15:8];
+	assign blue = active & 0;
+	assign red[7:0] = active & img_reg[7:0];	//
 
 
 
