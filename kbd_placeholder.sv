@@ -24,7 +24,7 @@ module kbd_placeholder(
 
     //assign ps2_data = SHIFT_REG[9] | ~sending;
 
-    always_ff @(posedge ps2_clk)
+    always_ff @(posedge ps2_clk) 
         ps2_data <= SHIFT_REG[9] | ~sending;
 
         //kbd clock
