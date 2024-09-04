@@ -1,3 +1,10 @@
+///////////////////////
+//  ROM text generator
+///////////////////////
+//  uses a lookup table to determine dot map for writing characters
+//
+//
+
 module character_generator #(
     parameter DEPTH = 160
 )
