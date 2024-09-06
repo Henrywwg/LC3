@@ -1,4 +1,4 @@
-module VGA_logic(
+module VGA(
 	input clk,
 	input rst_n,
 	input [15:0]img_reg,

@@ -4,3 +4,7 @@ transcript
 *.mti
 /work/*
 /work/
+TEXT_DISPLAY.*
+TEXT_DISPLAY_assignment_defaults.*
+db/*
+incremental_db/*

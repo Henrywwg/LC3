@@ -38,7 +38,7 @@ module character_processor(
 
     text_buffer iBuffer(.clk(clk), .rst_n(rst_n), .new_char(new_char), .waddr(waddr), .we(text_en), .dot_counter(dot_counter), .scanline_counter(scanline_counter), .char(char));
 
-    character_generator iCharGen(.clk(clk), .rst_n(rst_n), .en(enable), .dot_count(dot_counter[2:0]), .scan_count(scanline_counter[3:0]), .char(char), .pixel(calculated_pixel));
+    character_generator iCharGen(.clk(clk), .rst_n(rst_n), .en(enable), .dot_count(dot_counter[2:0]), .scan_count(scanline_counter[3:0]), .character(char), .pixel(calculated_pixel));
 
     VRAM iRAM(.clk(clk), .waddr({scanline_counter[8:0], dot_counter[9:0]}), .wdata(calculated_pixel), .raddr(VGA_ADDR), .data(amber_pixel));
 
