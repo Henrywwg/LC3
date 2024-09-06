@@ -21,7 +21,7 @@ module text_buffer(
 
     assign current_char = {scanline_counter[8:4], dot_counter[9:3]};    //For better utilization sequential access though it shouldn't really matter - its not a cache
 
-    logic [8:0]text_buffer[0:2399]; //2400 chars can fit on 640*480 (80*30)
+    logic [3:0]text_buffer[0:2399]; //2400 chars can fit on 640*480 (80*30)
 
     //buffer logic
     //

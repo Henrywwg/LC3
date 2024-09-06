@@ -5,7 +5,7 @@ module TEMPLATE_tb();
 
 
     //Instantiate DUT(s)
-    LC3 iDUT(.clk(clk), .rst_n(rst_n), OTHER HOOKUPS);
+    DUT iDUT(.clk(clk), .rst_n(rst_n), OTHER HOOKUPS);
 
     initial begin
         clk = 0;
