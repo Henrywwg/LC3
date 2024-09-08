@@ -17,7 +17,7 @@ module text_buffer(
     output logic [3:0]char           //Char for generator
 );
 
-    logic current_char;
+    logic [11:0]current_char;
 
     assign current_char = {scanline_counter[8:4], dot_counter[9:3]};    //For better utilization sequential access though it shouldn't really matter - its not a cache
 

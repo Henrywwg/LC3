@@ -20,7 +20,7 @@ module character_generator #(
 
 //logic char_data[0:7][0:DEPTH-1];     //8*DEPTH array of single bits
 logic char_data;
-logic [7:0]calculated_scan_count;
+// logic [7:0]calculated_scan_count;
 // // // // // // // // //
 // BEGIN
 //  x  x  x  x  x  x  x  x

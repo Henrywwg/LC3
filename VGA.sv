@@ -1,14 +1,14 @@
 module VGA(
 	input clk,
 	input rst_n,
-	input [15:0]img_reg,
+	input [7:0]img_reg,
 	
-	output [7:0]red,
-	output [7:0]green,
-	output blue,
+	output [3:0]red,
+	output [3:0]green,
+	output [3:0]blue,
 	output vsync,
 	output hsync,
-	output active
+	output logic active
 );
 
 	parameter H_A_VID = 640;
@@ -42,7 +42,7 @@ module VGA(
 			h_cntr <= h_cntr + 1;
 	end
 	
-	assign hsync = ~((H_A_VID + H_F_PORCH + H_SYNC > h_cntr) & (h_cntr >= H_A_VID + H_F_PORCH));
+	assign VGA_HS = ~((H_A_VID + H_F_PORCH + H_SYNC > h_cntr) & (h_cntr >= H_A_VID + H_F_PORCH));
 	
 	////////////////////////
 	//  Vertical Counter  //
@@ -52,28 +52,22 @@ module VGA(
 			v_cntr <= '0;
 		else if(v_cntr == V_TOT - 1)
 			v_cntr <= '0;
-		else if(v_cntr == H_TOT - 1)		//increment v_cntr when h_cntr row finishes
+		else if(h_cntr == H_TOT - 1)		//increment v_cntr when h_cntr row finishes
 			v_cntr <= v_cntr + 1;
 	end
 	
-	assign vsync = ~((V_A_VID + V_F_PORCH + V_SYNC > v_cntr) & (v_cntr >= V_A_VID + V_F_PORCH));
+	assign VGA_VS = ~((V_A_VID + V_F_PORCH + V_SYNC > v_cntr) & (v_cntr >= V_A_VID + V_F_PORCH));
 	
 	////////////////////
 	//  Video Output  //
 	////////////////////
 	assign active = (h_cntr < H_A_VID) & (v_cntr < V_A_VID);
 	
-	//Only green and blue? In 24 bit color? How queer...
+	//Only green and blue? In 12 bit color? How queer...
 	//Guess we doin amber now
-	assign green[7:0] = active & img_reg[15:8];
-	assign blue = active & 0;
-	assign red[7:0] = active & img_reg[7:0];	//
-
-
-
-
-
-//	 c68be0dbee81e56f0734651ee1e25d4521b07f61 not sure what this is but we'll figure it out
-
+	
+	assign red[3:0] 	= active ? 4'hF : 0; //img_reg[7:4];	
+	assign green[3:0] 	= active ? 4'hC : 0; //img_reg[3:0];
+	assign blue[3:0] 	= '0;
 
 endmodule

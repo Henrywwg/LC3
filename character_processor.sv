@@ -20,7 +20,7 @@ module character_processor(
     logic [3:0]char;
     logic enable;
     logic calculated_pixel;
-    logic [15:0]amber_pixel;
+    logic [7:0]amber_pixel;
     logic active;
 
     logic [18:0]VGA_ADDR;
@@ -32,7 +32,7 @@ module character_processor(
         else if(VGA_ADDR == 19'd307199) //Max value of ram
             VGA_ADDR <= '0;
         else if(active)
-            VGA_ADDR <= VGA_ADDR + 1;
+            VGA_ADDR <= VGA_ADDR + 1'b1;
 
     text_counters iCounter(.clk(clk), .rst_n(rst_n), .dot_counter(dot_counter), .scanline_counter(scanline_counter));
 

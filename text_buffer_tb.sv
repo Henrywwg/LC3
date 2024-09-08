@@ -1,3 +1,4 @@
+//Status - tb passed
 module text_buffer_tb();
     logic clk, rst_n;
     logic [3:0]new_char, char;
