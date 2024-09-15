@@ -15,7 +15,7 @@ module character_generator #(
     input [3:0]character,   //16 characters
     input [2:0]dot_count,
     input [3:0]scan_count,
-    output pixel
+    output [1:0]pixel
 );
 
 //logic char_data[0:7][0:DEPTH-1];     //8*DEPTH array of single bits
@@ -47,10 +47,10 @@ logic char_data;
 //  x  x  x  x  x  x  x  x
 // END
 
-assign calculated_scan_count = {character[3:0], scan_count[3:0]};
+//assign calculated_scan_count = {character[3:0], scan_count[3:0]};
 
 
-assign pixel = character[0];    //I'm lazy but this should work for testing
+assign pixel = character[1:0];    //I'm lazy but this should work for testing
 
 
 // always_ff @(posedge clk)
